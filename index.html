@@ -864,7 +864,7 @@
             const container = document.getElementById('checklists-container');
 
             if (currentSection === 'Taller') {
-                const perforadoraList = ['BA3000', 'BR5000', 'BR8000_1', 'BR8000_3', 'BR8000_4', 'BR8000_4F-73', 'TEI ROCK 550'];
+                const perforadoraList = ['BA3000', 'BR5000', 'BR8000_1', 'BR8000_3', 'BR8000_4', 'BR8000_4F-73', 'TEI ROCK 550', 'Manitou mrt-x1440'];
                 const bombaHormigonList = ['PUTZMEISTER TK40_1', 'PUTZMEISTER TK40_2', 'PUTZMEISTER TK40_3', 'PUTZMEISTER TK40_4', 'PUTZMEISTER TK40_5', 'PUTZMEISTER TK40_6', 'BSA1002D', 'CIFA'];
                 const compresorList = ['KAESER M100_1', 'KAESER M100_2', 'KAESER M100_3', 'KAESER M100_4', 'TUNGA_1', 'TUNGA_2', 'TUNGA_3'];
 
@@ -1287,7 +1287,7 @@
             let optionsHtml = '<option value="" disabled selected>Seleccione el elemento...</option>';
             
             if (isPerf) {
-                ['BA3000', 'BR5000', 'BR8000_1', 'BR8000_3', 'BR8000_4', 'BR8000_4F-73', 'TEI ROCK 550'].forEach(e => optionsHtml += `<option value="${e}">${e}</option>`);
+                ['BA3000', 'BR5000', 'BR8000_1', 'BR8000_3', 'BR8000_4', 'BR8000_4F-73', 'TEI ROCK 550', 'Manitou mrt-x1440'].forEach(e => optionsHtml += `<option value="${e}">${e}</option>`);
             } else if (isInj) {
                 for(let i=1; i<=9; i++) optionsHtml += `<option value="inyectora_${i}">inyectora_${i}</option>`;
             } else if (isBomba) {
