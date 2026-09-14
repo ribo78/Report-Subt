@@ -389,7 +389,7 @@
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzxEzgktGPlQeQ1idTmEv0gnZMB0HYlbavUatP0z0AHdrYelm9dGi40pPkexHsPmtu6/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwoJUzd2Z7vAw2wsuUTJ7rKgkD_mXpou0hP0JvgS7AwTpBAImu1AaIWLAZdvTOw-J0O/exec";
 
         const BODEGA_SHEETS = {
             perforadora: 'Perforadora',
@@ -445,6 +445,55 @@
             });
         }
 
+        function obtenerMantenimientoEquipo(registros, equipo) {
+            const objetivo = String(equipo || '').trim().toLowerCase();
+            const coincidencias = (registros || []).filter(item =>
+                String(item.equipo || item.Equipo || '').trim().toLowerCase() === objetivo
+            );
+
+            if (!coincidencias.length) return null;
+
+            // Si existen varios registros de mantenimiento para el mismo equipo,
+            // se prioriza la próxima mantención más cercana y luego las horas faltantes.
+            return coincidencias.reduce((mejor, actual) => {
+                if (!mejor) return actual;
+
+                const proxMejor = String(
+                    mejor.proxMant ?? mejor.prox_mant ?? mejor['prox mant'] ??
+                    mejor.proximaMantencion ?? mejor['próxima mantención'] ?? ''
+                ).trim();
+
+                const proxActual = String(
+                    actual.proxMant ?? actual.prox_mant ?? actual['prox mant'] ??
+                    actual.proximaMantencion ?? actual['próxima mantención'] ?? ''
+                ).trim();
+
+                const horasMejor = numeroHorometro(
+                    mejor.horasFaltantesProxMant ?? mejor.horas_faltantes_prox_mant ??
+                    mejor['horas faltantes prox mant'] ?? mejor.horasFaltantes ?? ''
+                );
+
+                const horasActual = numeroHorometro(
+                    actual.horasFaltantesProxMant ?? actual.horas_faltantes_prox_mant ??
+                    actual['horas faltantes prox mant'] ?? actual.horasFaltantes ?? ''
+                );
+
+                if (!proxMejor && proxActual) return actual;
+                if (proxMejor && !proxActual) return mejor;
+
+                // Si la fecha de próxima mantención viene en formato reconocible,
+                // se utiliza la más próxima. En caso contrario, se conserva el primer registro.
+                const fMejor = normalizarFechaTaller(proxMejor);
+                const fActual = normalizarFechaTaller(proxActual);
+
+                if (fActual && fMejor) return fActual < fMejor ? actual : mejor;
+                if (horasActual > horasMejor) return mejor;
+                if (horasActual < horasMejor) return actual;
+
+                return mejor;
+            }, null);
+        }
+
         function obtenerEquiposDesdeRegistros(registros) {
             const mapa = new Map();
 
@@ -493,6 +542,32 @@
                 appData['Compresor'] = Array.isArray(data.compresor) ? data.compresor : [];
                 appData['Tablero eléctrico'] = Array.isArray(data.tablero) ? data.tablero : [];
                 appData['Dosificadora'] = Array.isArray(data.dosificadora) ? data.dosificadora : [];
+
+                // Cargar la hoja "mantenciones" del Google Sheet.
+                try {
+                    const mantResponse = await fetch(WEB_APP_URL + '?accion=mantenciones&_=' + Date.now(), {
+                        method: 'GET',
+                        cache: 'no-store'
+                    });
+
+                    if (mantResponse.ok) {
+                        const mantData = await mantResponse.json();
+                        if (mantData.ok) {
+                            appData['Mantenciones'] = Array.isArray(mantData.mantenciones)
+                                ? mantData.mantenciones
+                                : [];
+                        } else {
+                            appData['Mantenciones'] = [];
+                            console.warn('No se pudieron cargar las mantenciones:', mantData.error);
+                        }
+                    } else {
+                        appData['Mantenciones'] = [];
+                        console.warn('No se pudo consultar la hoja mantenciones.');
+                    }
+                } catch (mantError) {
+                    appData['Mantenciones'] = [];
+                    console.warn('Error cargando mantenciones:', mantError);
+                }
 
                 if (currentSection === 'Taller') renderChecklists();
                 if (currentSection === 'Bodega') renderBodegaEquipos();
@@ -878,7 +953,7 @@
                 const text = String(filterText || '').trim().toLowerCase();
                 let html = `<div class="space-y-6">`;
 
-                function renderTallerGrupo(titulo, lista, registros) {
+                function renderTallerGrupo(titulo, lista, registros, mantenciones) {
                     let grupo = `<div><h5 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">${titulo}</h5><div class="space-y-3">`;
                     let visibles = 0;
 
@@ -898,13 +973,30 @@
                         const estado = latestRecord ? (latestRecord.estado || 'Sin estado') : 'Sin registro';
                         const dot = estado === 'Equipo operativo' ? '🟢' : estado === 'En reparación' ? '🟡' : estado === 'En espera de repuestos' ? '🟠' : estado === 'Averiado' ? '🔴' : '⚪';
 
+                        const mant = obtenerMantenimientoEquipo(mantenciones, eq);
+                        const proxMantRaw = mant ? (
+                            mant.proxMant ?? mant.prox_mant ?? mant['prox mant'] ??
+                            mant.proximaMantencion ?? mant['próxima mantención'] ?? ''
+                        ) : '';
+                        const horasFaltantesRaw = mant ? (
+                            mant.horasFaltantesProxMant ?? mant.horas_faltantes_prox_mant ??
+                            mant['horas faltantes prox mant'] ?? mant.horasFaltantes ?? ''
+                        ) : '';
+
+                        const proxMant = proxMantRaw !== '' ? proxMantRaw : 'Sin registro';
+                        const horasFaltantes = horasFaltantesRaw !== '' ? `${horasFaltantesRaw} hrs` : 'Sin registro';
+
                         grupo += `
-                            <div class="bg-[#1b1f26] px-4 py-3 rounded-2xl border border-slate-800 shadow-sm flex items-center justify-between gap-3 text-xs md:text-sm">
+                            <div class="bg-[#1b1f26] px-4 py-3 rounded-2xl border border-slate-800 shadow-sm text-xs md:text-sm">
                                 <div class="flex items-center gap-4 overflow-x-auto no-scrollbar py-1">
                                     <span class="font-bold text-white whitespace-nowrap">Equipo: ${eq}</span>
                                     <span class="text-slate-300 whitespace-nowrap">Horómetro: <span class="text-amber-400 font-mono">${horometro}</span></span>
                                     <span class="text-slate-300 whitespace-nowrap">Fecha: <span class="text-slate-100">${fecha}</span></span>
                                     <span class="font-semibold text-slate-200 flex items-center gap-1 whitespace-nowrap">${dot} ${estado}</span>
+                                </div>
+                                <div class="flex items-center gap-4 overflow-x-auto no-scrollbar py-1 mt-1 border-t border-slate-800/70 pt-2">
+                                    <span class="text-slate-300 whitespace-nowrap">Prox Mant: <span class="text-amber-400 font-semibold">${proxMant}</span></span>
+                                    <span class="text-slate-300 whitespace-nowrap">Horas faltantes prox mant: <span class="text-amber-400 font-mono font-semibold">${horasFaltantes}</span></span>
                                 </div>
                             </div>`;
                     });
@@ -916,9 +1008,11 @@
                     return grupo;
                 }
 
-                html += renderTallerGrupo('Equipos de Perforadora', perforadoraList, perfRecords);
-                html += renderTallerGrupo('Equipos de Bomba de Hormigón', bombaHormigonList, bombaRecords);
-                html += renderTallerGrupo('Equipos de Compresor', compresorList, compresorRecords);
+                const mantenciones = appData['Mantenciones'] || [];
+
+                html += renderTallerGrupo('Equipos de Perforadora', perforadoraList, perfRecords, mantenciones);
+                html += renderTallerGrupo('Equipos de Bomba de Hormigón', bombaHormigonList, bombaRecords, mantenciones);
+                html += renderTallerGrupo('Equipos de Compresor', compresorList, compresorRecords, mantenciones);
                 html += `</div>`;
 
                 container.innerHTML = html;
