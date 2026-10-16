@@ -1057,7 +1057,7 @@
             }
 
             if (currentSection === 'Inyectora') {
-                const inyectoraList = ['inyectora_1', 'inyectora_2', 'inyectora_3', 'inyectora_4', 'inyectora_5', 'inyectora_6', 'inyectora_7', 'inyectora_8', 'inyectora_9'];
+                const inyectoraList = ['inyectora_1', 'inyectora_2', 'inyectora_3', 'inyectora_4', 'inyectora_5', 'inyectora_6', 'inyectora_7', 'inyectora_8', 'inyectora_9', 'inyectora_10'];
                 const inyecRecords = appData['Inyectora'] || [];
                 document.getElementById('summary-count').innerText = `${inyectoraList.length} equipos configurados`;
 
@@ -1383,7 +1383,7 @@
             if (isPerf) {
                 ['BA3000', 'BR5000', 'BR8000_1', 'BR8000_3', 'BR8000_4', 'BR8000_4F-73', 'TEI ROCK 550', 'Manitou mrt-x1440'].forEach(e => optionsHtml += `<option value="${e}">${e}</option>`);
             } else if (isInj) {
-                for(let i=1; i<=9; i++) optionsHtml += `<option value="inyectora_${i}">inyectora_${i}</option>`;
+                for(let i=1; i<=10; i++) optionsHtml += `<option value="inyectora_${i}">inyectora_${i}</option>`;
             } else if (isBomba) {
                 ['PUTZMEISTER TK40_1', 'PUTZMEISTER TK40_2', 'PUTZMEISTER TK40_3', 'PUTZMEISTER TK40_4', 'PUTZMEISTER TK40_5', 'PUTZMEISTER TK40_6', 'BSA1002D', 'CIFA'].forEach(e => optionsHtml += `<option value="${e}">${e}</option>`);
             } else if (isComp) {
